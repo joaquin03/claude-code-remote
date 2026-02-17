@@ -36,7 +36,19 @@ The only ongoing cost is your existing Claude Code API usage — the remote acce
 - Python 3.9+
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 
+## Set Up with Claude Code
+
+If you have [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed, you can have it walk you through the setup. Just clone the repo, open Claude Code in the directory, and ask:
+
+```
+Help me install and set up claude-code-remote
+```
+
+The included `CLAUDE.md` gives Claude Code all the context it needs to check your prerequisites, configure the scripts for your machine, and get everything running.
+
 ## Step-by-Step Setup
+
+If you prefer to do it manually, follow these steps:
 
 ### 1. Install dependencies
 

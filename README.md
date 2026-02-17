@@ -170,7 +170,7 @@ All services bind exclusively to the Tailscale interface IP — they are unreach
 
 **tmux** is a terminal multiplexer that keeps your Claude Code session alive even when you disconnect. Close your browser, lose your connection, or switch devices — reconnect anytime and pick up exactly where you left off.
 
-**Voice Wrapper** is a FastAPI app that wraps the ttyd terminal in a mobile-friendly page. It adds a native text input field (where iOS dictation works properly), quick-action buttons for common keys, and auto-reconnect logic so the terminal reloads when your phone wakes from sleep.
+**Voice Wrapper** is a FastAPI app that wraps the ttyd terminal in a mobile-friendly page. It exists because iOS voice dictation pastes duplicate words when you dictate directly into the raw terminal (an xterm.js IME handling issue). The wrapper sidesteps this with a native text input field where dictation works correctly, then sends the text to tmux. It also adds quick-action buttons for common keys and auto-reconnect logic so the terminal reloads when your phone wakes from sleep.
 
 **caffeinate** is a macOS utility that prevents your Mac from sleeping while the services are running, so they stay available when you're away from your desk.
 

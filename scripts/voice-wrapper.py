@@ -66,13 +66,14 @@ def _parse_skill_md(path: str):
 def _collect_skill_commands() -> list:
     """Read ~/.claude/skills/ and ~/.claude/plugins/cache/ and return command dicts."""
     commands = []
-    seen: set = set()
+    seen_custom: set = set()
+    seen_plugin: set = set()
 
     # 1. Custom skills: ~/.claude/skills/<skill-name>/SKILL.md
     for path in glob.glob(f"{HOME}/.claude/skills/*/SKILL.md"):
         name, desc = _parse_skill_md(path)
-        if name and name not in seen:
-            seen.add(name)
+        if name and name not in seen_custom:
+            seen_custom.add(name)
             commands.append({"command": f"/{name}", "description": desc, "takes_args": True})
 
     # 2. Plugin skills (recursive glob catches both path variants)
@@ -80,16 +81,19 @@ def _collect_skill_commands() -> list:
         parts = path.split(os.sep)
         try:
             cache_idx = parts.index("cache")
-            plugin_name = parts[cache_idx + 2]   # marketplace / plugin / version / ...
+            plugin_dir = parts[cache_idx + 1]       # e.g. 'claude-plugins-official', 'voicemode'
+            if plugin_dir.startswith("temp_git_"):  # skip transient installation artifacts
+                continue
+            plugin_name = parts[cache_idx + 2]      # e.g. 'superpowers', 'frontend-design'
         except (ValueError, IndexError):
             continue
         name, desc = _parse_skill_md(path)
         if not name:
             continue
         key = (plugin_name, name)
-        if key in seen:
+        if key in seen_plugin:
             continue
-        seen.add(key)
+        seen_plugin.add(key)
         cmd = f"/{plugin_name}:{name}" if plugin_name != name else f"/{name}"
         commands.append({"command": cmd, "description": desc, "takes_args": True})
 

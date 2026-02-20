@@ -264,6 +264,7 @@ async def index():
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            min-width: 0;
         }
     </style>
 </head>
@@ -348,6 +349,7 @@ async def index():
                 return;
             }
             const cmds = await loadCommands();
+            if (input.value !== val) return;
             const lower = val.toLowerCase();
             const filtered = cmds.filter(c => c.command.toLowerCase().includes(lower));
             if (filtered.length === 0) {

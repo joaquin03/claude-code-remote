@@ -229,6 +229,42 @@ async def index():
         }
         .status.connected { color: #4a9; }
         .status.disconnected { color: #a44; }
+        #cmd-panel {
+            display: none;
+            position: fixed;
+            left: 0; right: 0;
+            bottom: 0;
+            max-height: 40vh;
+            overflow-y: auto;
+            background: #252525;
+            border-top: 1px solid #444;
+            z-index: 50;
+            -webkit-overflow-scrolling: touch;
+        }
+        #cmd-panel.open { display: block; }
+        .cmd-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            padding: 10px 14px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+        .cmd-row:active { background: #333; }
+        .cmd-name {
+            font-family: 'Menlo', monospace;
+            font-size: 14px;
+            color: #7bf;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .cmd-desc {
+            font-size: 12px;
+            color: #888;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -255,12 +291,87 @@ async def index():
             <button onclick="sendText()">Send</button>
         </div>
     </div>
+    <div id="cmd-panel"></div>
     <script>
         const input = document.getElementById('cmd');
         const output = document.getElementById('output');
         const terminal = document.getElementById('terminal');
         const statusEl = document.getElementById('status');
         let autoScroll = true;
+
+        // Slash-command picker — uses safe DOM methods, no innerHTML
+        let cmdCache = null;
+        const panel = document.getElementById('cmd-panel');
+
+        async function loadCommands() {
+            if (cmdCache) return cmdCache;
+            const r = await fetch('/commands');
+            cmdCache = await r.json();
+            return cmdCache;
+        }
+
+        function positionPanel() {
+            const inputBar = document.querySelector('.input-bar');
+            const quickKeys = document.querySelector('.quick-keys');
+            panel.style.bottom = (inputBar.offsetHeight + quickKeys.offsetHeight) + 'px';
+        }
+
+        function renderPanel(commands) {
+            while (panel.firstChild) panel.removeChild(panel.firstChild);
+            commands.forEach(c => {
+                const row = document.createElement('div');
+                row.className = 'cmd-row';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'cmd-name';
+                nameSpan.textContent = c.command;
+
+                const descSpan = document.createElement('span');
+                descSpan.className = 'cmd-desc';
+                descSpan.textContent = c.description;
+
+                row.appendChild(nameSpan);
+                row.appendChild(descSpan);
+
+                const handler = () => pickCmd(c.command);
+                row.addEventListener('click', handler);
+                row.addEventListener('touchend', (e) => { e.preventDefault(); handler(); });
+
+                panel.appendChild(row);
+            });
+        }
+
+        async function onInputChange() {
+            const val = input.value;
+            if (!val.startsWith('/')) {
+                panel.classList.remove('open');
+                return;
+            }
+            const cmds = await loadCommands();
+            const lower = val.toLowerCase();
+            const filtered = cmds.filter(c => c.command.toLowerCase().includes(lower));
+            if (filtered.length === 0) {
+                panel.classList.remove('open');
+                return;
+            }
+            positionPanel();
+            renderPanel(filtered);
+            panel.classList.add('open');
+        }
+
+        function pickCmd(command) {
+            input.value = command + ' ';
+            const len = input.value.length;
+            input.setSelectionRange(len, len);
+            input.focus();
+            panel.classList.remove('open');
+        }
+
+        document.addEventListener('touchstart', (e) => {
+            if (!panel.contains(e.target) && e.target !== input) {
+                panel.classList.remove('open');
+            }
+        });
 
         // SSE stream for terminal output
         function connect() {
@@ -294,6 +405,9 @@ async def index():
             if (e.key === 'Enter') {
                 e.preventDefault();
                 sendText();
+            }
+            if (e.key === 'Escape') {
+                panel.classList.remove('open');
             }
         });
 
@@ -337,6 +451,7 @@ async def index():
             setTimeout(() => sendText('claude --resume'), 1500);
         }
 
+        input.addEventListener('input', onInputChange);
         connect();
         input.focus();
     </script>

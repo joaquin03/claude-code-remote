@@ -7,6 +7,17 @@ LOG_DIR="$PROJECT_DIR/logs"
 
 mkdir -p "$LOG_DIR"
 
+# Load .env from project root if present
+ENV_FILE="$PROJECT_DIR/.env"
+if [ -f "$ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    set -a; source "$ENV_FILE"; set +a
+fi
+
+# Port defaults (can be overridden in .env)
+WRAPPER_PORT="${WRAPPER_PORT:-8888}"
+TTYD_PORT="${TTYD_PORT:-7681}"
+
 # Get Tailscale IP
 TAILSCALE_IP=$(tailscale ip -4 2>/dev/null)
 if [ -z "$TAILSCALE_IP" ]; then
@@ -29,7 +40,7 @@ echo "caffeinate running (PID: $CAFFEINATE_PID)"
 # Start ttyd bound to Tailscale IP only
 # Uses tmux-attach.sh wrapper for clean argument handling
 ttyd \
-    --port 7681 \
+    --port "$TTYD_PORT" \
     --interface "$TAILSCALE_IP" \
     --writable \
     -t fontSize=14 \
@@ -42,18 +53,19 @@ ttyd \
     >> "$LOG_DIR/ttyd.log" 2>&1 &
 
 TTYD_PID=$!
-echo "ttyd running (PID: $TTYD_PID) on http://$TAILSCALE_IP:7681"
+echo "ttyd running (PID: $TTYD_PID) on http://$TAILSCALE_IP:$TTYD_PORT"
 
 # Start voice dictation wrapper
 pkill -f "voice-wrapper" 2>/dev/null || true
-python3 "$SCRIPT_DIR/voice-wrapper.py" >> "$LOG_DIR/voice-wrapper.log" 2>&1 &
+WRAPPER_PORT="$WRAPPER_PORT" TTYD_PORT="$TTYD_PORT" \
+    /Users/joaquinanduano/.pyenv/versions/3.9.16/bin/python3 "$SCRIPT_DIR/voice-wrapper.py" >> "$LOG_DIR/voice-wrapper.log" 2>&1 &
 WRAPPER_PID=$!
-echo "voice wrapper running (PID: $WRAPPER_PID) on http://$TAILSCALE_IP:8080"
+echo "voice wrapper running (PID: $WRAPPER_PID) on http://$TAILSCALE_IP:$WRAPPER_PORT"
 
 echo ""
 echo "=== Remote CLI Ready ==="
-echo "Terminal:  http://$TAILSCALE_IP:7681"
-echo "Voice UI:  http://$TAILSCALE_IP:8080"
+echo "Terminal:  http://$TAILSCALE_IP:$TTYD_PORT"
+echo "Voice UI:  http://$TAILSCALE_IP:$WRAPPER_PORT"
 echo ""
 echo "Open the Voice UI URL in Chrome on your iPhone (Tailscale must be active)."
 echo "To stop: $SCRIPT_DIR/stop-remote-cli.sh"
@@ -75,7 +87,7 @@ while $KEEP_RUNNING; do
     echo "[$(date)] ttyd exited, restarting in 5s..." >> "$LOG_DIR/ttyd.log"
     sleep 5
     ttyd \
-        --port 7681 \
+        --port "$TTYD_PORT" \
         --interface "$TAILSCALE_IP" \
         --writable \
         -t fontSize=14 \

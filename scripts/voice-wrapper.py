@@ -106,7 +106,8 @@ import uvicorn
 
 TMUX = shutil.which("tmux") or "/opt/homebrew/bin/tmux"
 TAILSCALE = shutil.which("tailscale") or "/usr/local/bin/tailscale"
-WRAPPER_PORT = 8888
+WRAPPER_PORT = int(os.environ.get("WRAPPER_PORT", 8888))
+TTYD_PORT = int(os.environ.get("TTYD_PORT", 7681))
 TMUX_SESSION = "claude"
 
 
